@@ -59,6 +59,22 @@ func CreateCommand() *cobra.Command {
 				if err := ioutil.WriteFile(fullPath, []byte(data), 0644); err != nil {
 					return err
 				}
+			case runner.AzOSDriverID:
+				resourceGroup, err := GetEnvVar("RESOURCE_GROUP")
+				if err != nil {
+					return err
+				}
+
+				acrName, err := GetEnvVar("ACR_NAME")
+				if err != nil {
+					return err
+				}
+
+				data := fmt.Sprintf(runner.DefaultAzOSRunConfigTemplate, user, resourceGroup, acrName)
+				fullPath := path.Join(filePath, runner.AzOSConfigFileName)
+				if err := ioutil.WriteFile(fullPath, []byte(data), 0644); err != nil {
+					return err
+				}
 			default:
 				return fmt.Errorf("unknown provider %s", provider)
 			}
