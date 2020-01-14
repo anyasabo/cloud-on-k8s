@@ -27,10 +27,10 @@ type Plan struct {
 
 	Psp bool `yaml:"psp"`
 
-	Gke *GkeSettings `yaml:"gke,omitempty"`
-	Aks *AksSettings `yaml:"aks,omitempty"`
-
-	VaultInfo *VaultInfo `yaml:"vaultInfo,omitempty"`
+	Gke       *GkeSettings  `yaml:"gke,omitempty"`
+	Aks       *AksSettings  `yaml:"aks,omitempty"`
+	AzOS      *AzOSSettings `yaml:"azos,omitempty"`
+	VaultInfo *VaultInfo    `yaml:"vaultInfo,omitempty"`
 }
 
 type VaultInfo struct {
@@ -52,6 +52,14 @@ type GkeSettings struct {
 
 // AksSettings encapsulates settings specific to AKS
 type AksSettings struct {
+	ResourceGroup string `yaml:"resourceGroup"`
+	Location      string `yaml:"location"`
+	AcrName       string `yaml:"acrName"`
+	NodeCount     int    `yaml:"nodeCount"`
+}
+
+// AzOSSettings encapsulates settings specific to Azure OpenShift
+type AzOSSettings struct {
 	ResourceGroup string `yaml:"resourceGroup"`
 	Location      string `yaml:"location"`
 	AcrName       string `yaml:"acrName"`
