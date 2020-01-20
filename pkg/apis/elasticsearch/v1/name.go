@@ -27,6 +27,7 @@ const (
 	defaultPodDisruptionBudget        = "default"
 	scriptsConfigMapSuffix            = "scripts"
 	transportCertificatesSecretSuffix = "transport-certificates"
+	metricbeatDeploymentSuffix        = "metricbeat"
 
 	controllerRevisionHashLen = 10
 )
@@ -47,6 +48,7 @@ var (
 		defaultPodDisruptionBudget,
 		scriptsConfigMapSuffix,
 		transportCertificatesSecretSuffix,
+		metricbeatDeploymentSuffix,
 	}
 )
 
@@ -134,4 +136,8 @@ func LicenseSecretName(esName string) string {
 
 func DefaultPodDisruptionBudget(esName string) string {
 	return ESNamer.Suffix(esName, defaultPodDisruptionBudget)
+}
+
+func MetricbeatDeployment(esName string) string {
+	return ESNamer.Suffix(esName, metricbeatDeploymentSuffix)
 }

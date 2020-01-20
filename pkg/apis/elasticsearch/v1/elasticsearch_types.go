@@ -45,6 +45,9 @@ type ElasticsearchSpec struct {
 	// See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-es-secure-settings.html
 	// +kubebuilder:validation:Optional
 	SecureSettings []commonv1.SecretSource `json:"secureSettings,omitempty"`
+
+	// Monitoring is a reference to an Elasticsearch cluster to send monitoring data to using Metricbeat
+	Monitoring Monitoring `json:"monitoring,omitempty"`
 }
 
 // NodeCount returns the total number of nodes of the Elasticsearch cluster
@@ -148,6 +151,12 @@ func (cb ChangeBudget) GetMaxUnavailableOrDefault() *int32 {
 	}
 
 	return maxUnavailable
+}
+
+type Monitoring struct {
+	// ElasticsearchRef is a reference to an Elasticsearch cluster running in the same Kubernetes cluster.
+	ElasticsearchRef commonv1.ObjectSelector `json:"elasticsearchRef,omitempty"`
+	// TODO sabo should we also include a way to specify something using host names and secrets/keys?
 }
 
 // ElasticsearchHealth is the health of the cluster as returned by the health API.
