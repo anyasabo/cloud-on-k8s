@@ -26,6 +26,7 @@ require (
 	github.com/huandu/xstrings v1.2.0 // indirect
 	github.com/imdario/mergo v0.3.8
 	github.com/influxdata/tdigest v0.0.1 // indirect
+	github.com/karrick/godirwalk v1.15.3 // indirect
 	github.com/magiconair/properties v1.8.1
 	github.com/onsi/ginkgo v1.10.1 // indirect
 	github.com/onsi/gomega v1.7.0 // indirect
