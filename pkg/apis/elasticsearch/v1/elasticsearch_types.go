@@ -55,7 +55,13 @@ type ElasticsearchSpec struct {
 	// RemoteClusters enables you to establish uni-directional connections to a remote Elasticsearch cluster.
 	// +optional
 	RemoteClusters []RemoteCluster `json:"remoteClusters,omitempty"`
+
+	// Monitoring is a list of Elasticsearch references to send monitoring metrics to.
+	Monitoring []ElasticsearchRef `json:"monitoring,omitempty"`
 }
+
+// ElasticsearchRef is a reference to an Elasticsearch resource that is also managed by this instance of the operator
+type ElasticsearchRef commonv1.ObjectSelector
 
 // RemoteCluster declares a remote Elasticsearch cluster connection.
 type RemoteCluster struct {

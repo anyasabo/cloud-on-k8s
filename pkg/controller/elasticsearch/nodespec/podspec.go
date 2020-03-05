@@ -50,6 +50,8 @@ func BuildPodTemplateSpec(
 	if err != nil {
 		return corev1.PodTemplateSpec{}, err
 	}
+
+	sidecars, err := getSidecars(es)
 	defaultContainerPorts := getDefaultContainerPorts(es)
 
 	builder = builder.
@@ -64,6 +66,7 @@ func BuildPodTemplateSpec(
 		WithLabels(labels).
 		WithAnnotations(DefaultAnnotations).
 		WithInitContainers(initContainers...).
+		WithContainers(sidecars...).
 		WithPreStopHook(*NewPreStopHook()).
 		WithInitContainerDefaults()
 
@@ -123,4 +126,9 @@ func buildLabels(
 	}
 
 	return podLabels, nil
+}
+
+func getSidecars(es esv1.Elasticsearch) ([]corev1.Container, error) {
+	var sidecars []corev1.Container
+	return sidecars, nil
 }

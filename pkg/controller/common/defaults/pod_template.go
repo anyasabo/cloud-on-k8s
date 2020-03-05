@@ -284,6 +284,17 @@ func (b *PodTemplateBuilder) findInitContainerByName(name string) int {
 	return -1
 }
 
+// findInitContainerByName attempts to find an init container with the given name in the template
+// Returns the index of the container or -1 if no init container by that name was found.
+func (b *PodTemplateBuilder) findcontainerByName(name string) int {
+	for i, c := range b.PodTemplate.Spec.Containers {
+		if c.Name == name {
+			return i
+		}
+	}
+	return -1
+}
+
 // WithInitContainers includes the given init containers to the pod template.
 //
 // Ordering:
@@ -310,6 +321,36 @@ func (b *PodTemplateBuilder) WithInitContainers(initContainers ...corev1.Contain
 	}
 
 	b.PodTemplate.Spec.InitContainers = append(containers, b.PodTemplate.Spec.InitContainers...)
+
+	return b
+}
+
+// WithContainers includes the given containers in the pod template.
+//
+// Ordering:
+// - Provided init containers are prepended to the existing ones in the template.
+// - If an init container by the same name already exists in the template, the init container in the template
+// takes its place, and the provided init container is discarded.
+func (b *PodTemplateBuilder) WithContainers(containers ...corev1.Container) *PodTemplateBuilder {
+	var sidecars []corev1.Container
+
+	for _, c := range containers {
+		if index := b.findInitContainerByName(c.Name); index != -1 {
+			container := b.PodTemplate.Spec.Containers[index]
+
+			// remove it from the podTemplate:
+			b.PodTemplate.Spec.Containers = append(
+				b.PodTemplate.Spec.Containers[:index],
+				b.PodTemplate.Spec.Containers[index+1:]...,
+			)
+
+			sidecars = append(containers, container)
+		} else {
+			sidecars = append(containers, c)
+		}
+	}
+
+	b.PodTemplate.Spec.Containers = append(sidecars, b.PodTemplate.Spec.Containers...)
 
 	return b
 }
