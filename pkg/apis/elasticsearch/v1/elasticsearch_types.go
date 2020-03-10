@@ -56,8 +56,17 @@ type ElasticsearchSpec struct {
 	// +optional
 	RemoteClusters []RemoteCluster `json:"remoteClusters,omitempty"`
 
-	// Monitoring is a list of Elasticsearch references to send monitoring metrics to.
-	Monitoring []ElasticsearchRef `json:"monitoring,omitempty"`
+	// Monitoring contains Elasticsearch references to send stack monitoring metrics to.
+	Monitoring Monitoring `json:"monitoring,omitempty"`
+}
+
+type Monitoring struct {
+	// ServiceAccountName is used to check access from the current resource to a resource (eg. Elasticsearch) in a different namespace.
+	// Can only be used if ECK is enforcing RBAC on references.
+	// +optional
+	ServiceAccountName string             `json:"serviceAccountName,omitempty"`
+	ElasticsearchRefs  []ElasticsearchRef `json:"elasticsearchRefs,omitempty"`
+	Secrets            []string           `json:"secrets,omitempty"`
 }
 
 // ElasticsearchRef is a reference to an Elasticsearch resource that is also managed by this instance of the operator

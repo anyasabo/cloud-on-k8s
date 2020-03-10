@@ -328,14 +328,14 @@ func (b *PodTemplateBuilder) WithInitContainers(initContainers ...corev1.Contain
 // WithContainers includes the given containers in the pod template.
 //
 // Ordering:
-// - Provided init containers are prepended to the existing ones in the template.
-// - If an init container by the same name already exists in the template, the init container in the template
-// takes its place, and the provided init container is discarded.
+// - Provided containers are prepended to the existing ones in the template.
+// - If a container by the same name already exists in the template, the container in the template
+// takes its place, and the provided container is discarded.
 func (b *PodTemplateBuilder) WithContainers(containers ...corev1.Container) *PodTemplateBuilder {
 	var sidecars []corev1.Container
 
 	for _, c := range containers {
-		if index := b.findInitContainerByName(c.Name); index != -1 {
+		if index := b.findcontainerByName(c.Name); index != -1 {
 			container := b.PodTemplate.Spec.Containers[index]
 
 			// remove it from the podTemplate:
@@ -351,7 +351,6 @@ func (b *PodTemplateBuilder) WithContainers(containers ...corev1.Container) *Pod
 	}
 
 	b.PodTemplate.Spec.Containers = append(sidecars, b.PodTemplate.Spec.Containers...)
-
 	return b
 }
 
