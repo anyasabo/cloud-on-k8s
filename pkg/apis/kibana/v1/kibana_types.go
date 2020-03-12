@@ -99,6 +99,8 @@ func (k *Kibana) RequiresAssociation() bool {
 	return k.Spec.ElasticsearchRef.Name != ""
 }
 
+var _ commonv1.Associated = (*Kibana)(nil)
+
 // +kubebuilder:object:root=true
 
 // Kibana represents a Kibana resource in a Kubernetes cluster.

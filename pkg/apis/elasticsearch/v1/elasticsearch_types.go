@@ -60,17 +60,44 @@ type ElasticsearchSpec struct {
 	Monitoring Monitoring `json:"monitoring,omitempty"`
 }
 
+// Monitoring contains Elasticsearch references to send stack monitoring metrics to.
 type Monitoring struct {
-	// ServiceAccountName is used to check access from the current resource to a resource (eg. Elasticsearch) in a different namespace.
-	// Can only be used if ECK is enforcing RBAC on references.
-	// +optional
-	ServiceAccountName string             `json:"serviceAccountName,omitempty"`
-	ElasticsearchRefs  []ElasticsearchRef `json:"elasticsearchRefs,omitempty"`
-	Secrets            []string           `json:"secrets,omitempty"`
+	ElasticsearchRefs []ElasticsearchRef `json:"elasticsearchRefs,omitempty"`
+	Secrets           []string           `json:"secrets,omitempty"`
 }
 
 // ElasticsearchRef is a reference to an Elasticsearch resource that is also managed by this instance of the operator
 type ElasticsearchRef commonv1.ObjectSelector
+
+// AssociationConf returns the association configuration of an Elasticsearch cluster.
+func (es *Elasticsearch) AssociationConf() *commonv1.AssociationConf {
+	return es.assocConf
+}
+
+// SetAssociationConf sets the association configuration of an Elasticsearch cluster.
+func (es *Elasticsearch) SetAssociationConf(assocConf *commonv1.AssociationConf) {
+	es.assocConf = assocConf
+}
+
+// RequiresAssociation returns true if the spec specifies an Elasticsearch reference.
+func (es *Elasticsearch) RequiresAssociation() bool {
+	return len(es.Spec.Monitoring.ElasticsearchRefs) != 0
+}
+
+// ElasticsearchRef returns the referenced Elasticsearch resource used for monitoring
+func (es *Elasticsearch) ElasticsearchRef() commonv1.ObjectSelector {
+	if len(es.Spec.Monitoring.ElasticsearchRefs) > 0 {
+		return commonv1.ObjectSelector(es.Spec.Monitoring.ElasticsearchRefs[0])
+	}
+	return commonv1.ObjectSelector{}
+}
+
+// ServiceAccountName returns the name of the account used to check access from the current resource to a resource (eg. a remote Elasticsearch cluster) in a different namespace.
+func (es *Elasticsearch) ServiceAccountName() string {
+	return es.Spec.ServiceAccountName
+}
+
+var _ commonv1.Associated = (*Elasticsearch)(nil)
 
 // RemoteCluster declares a remote Elasticsearch cluster connection.
 type RemoteCluster struct {
@@ -264,8 +291,9 @@ type Elasticsearch struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   ElasticsearchSpec   `json:"spec,omitempty"`
-	Status ElasticsearchStatus `json:"status,omitempty"`
+	Spec      ElasticsearchSpec         `json:"spec,omitempty"`
+	Status    ElasticsearchStatus       `json:"status,omitempty"`
+	assocConf *commonv1.AssociationConf `json:"-"` //nolint:govet
 }
 
 // IsMarkedForDeletion returns true if the Elasticsearch is going to be deleted

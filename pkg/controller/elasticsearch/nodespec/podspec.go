@@ -5,29 +5,23 @@
 package nodespec
 
 import (
-	"context"
 	"crypto/sha256"
 	"fmt"
-	"path/filepath"
 
-	"go.elastic.co/apm"
 	corev1 "k8s.io/api/core/v1"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/network"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sidecar"
 	esvolume "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
@@ -39,6 +33,7 @@ func BuildPodTemplateSpec(
 	cfg settings.CanonicalConfig,
 	keystoreResources *keystore.Resources,
 ) (corev1.PodTemplateSpec, error) {
+	// TODO consider adding the metricbeat config volumes here? or call it again? prob call it again
 	volumes, volumeMounts := buildVolumes(es.Name, nodeSet, keystoreResources)
 	labels, err := buildLabels(es, cfg, nodeSet, keystoreResources)
 	if err != nil {
@@ -58,7 +53,8 @@ func BuildPodTemplateSpec(
 		return corev1.PodTemplateSpec{}, err
 	}
 
-	sidecars, err := getSidecars(es)
+	sidecars := sidecar.NewMonitoringSidecars(es)
+	sidecarVolumes := sidecar.NewSidecarVolumes(es)
 	defaultContainerPorts := getDefaultContainerPorts(es)
 
 	builder = builder.
@@ -74,6 +70,7 @@ func BuildPodTemplateSpec(
 		WithAnnotations(DefaultAnnotations).
 		WithInitContainers(initContainers...).
 		WithContainers(sidecars...).
+		WithVolumes(sidecarVolumes...).
 		WithPreStopHook(*NewPreStopHook()).
 		WithInitContainerDefaults()
 
@@ -133,141 +130,4 @@ func buildLabels(
 	}
 
 	return podLabels, nil
-}
-
-func getSidecars(es esv1.Elasticsearch) ([]corev1.Container, error) {
-	var sidecars []corev1.Container
-	for _, monClus := range es.Spec.Monitoring.ElasticsearchRefs {
-		//
-		sidecars = append(sidecars, buildSidecar(monClus))
-	}
-	return sidecars, nil
-}
-
-func buildSidecar(esRef esv1.ElasticsearchRef) corev1.Container {
-	return corev1.Container{}
-}
-
-func NewConfigFromSpec(c k8s.Client, as *apmv1.ApmServer) (*settings.CanonicalConfig, error) {
-	specConfig := as.Spec.Config
-	if specConfig == nil {
-		specConfig = &commonv1.Config{}
-	}
-
-	userSettings, err := settings.NewCanonicalConfigFrom(specConfig.Data)
-	if err != nil {
-		return nil, err
-	}
-
-	outputCfg := settings.NewCanonicalConfig()
-	if as.AssociationConf().IsConfigured() {
-		// Get username and password
-		username, password, err := association.ElasticsearchAuthSettings(c, as)
-		if err != nil {
-			return nil, err
-		}
-
-		tmpOutputCfg := map[string]interface{}{
-			"output.elasticsearch.hosts":    []string{as.AssociationConf().GetURL()},
-			"output.elasticsearch.username": username,
-			"output.elasticsearch.password": password,
-		}
-		if as.AssociationConf().GetCACertProvided() {
-			tmpOutputCfg["output.elasticsearch.ssl.certificate_authorities"] = []string{filepath.Join(CertificatesDir, certificates.CAFileName)}
-		}
-
-		outputCfg = settings.MustCanonicalConfig(tmpOutputCfg)
-	}
-
-	// Create a base configuration.
-
-	cfg := settings.MustCanonicalConfig(map[string]interface{}{
-		APMServerHost:        fmt.Sprintf(":%d", DefaultHTTPPort),
-		APMServerSecretToken: "${SECRET_TOKEN}",
-	})
-
-	// Merge the configuration with userSettings last so they take precedence.
-	err = cfg.MergeWith(
-		outputCfg,
-		settings.MustCanonicalConfig(tlsSettings(as)),
-		userSettings,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	return cfg, nil
-}
-
-// CanonicalConfig contains configuration for Kibana ("kibana.yml"),
-// as a hierarchical key-value configuration.
-type CanonicalConfig struct {
-	*settings.CanonicalConfig
-}
-
-// NewConfigSettings returns the Kibana configuration settings for the given Kibana resource.
-func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, v version.Version) (CanonicalConfig, error) {
-	span, _ := apm.StartSpan(ctx, "new_config_settings", tracing.SpanTypeApp)
-	defer span.End()
-
-	currentConfig, err := getExistingConfig(client, kb)
-	if err != nil {
-		return CanonicalConfig{}, err
-	}
-
-	filteredCurrCfg, err := filterExistingConfig(currentConfig)
-	if err != nil {
-		return CanonicalConfig{}, err
-	}
-
-	specConfig := kb.Spec.Config
-	if specConfig == nil {
-		specConfig = &commonv1.Config{}
-	}
-
-	userSettings, err := settings.NewCanonicalConfigFrom(specConfig.Data)
-	if err != nil {
-		return CanonicalConfig{}, err
-	}
-
-	cfg := settings.MustCanonicalConfig(baseSettings(&kb))
-	kibanaTLSCfg := settings.MustCanonicalConfig(kibanaTLSSettings(kb))
-	versionSpecificCfg := VersionDefaults(&kb, v)
-
-	if !kb.RequiresAssociation() {
-		// merge the configuration with userSettings last so they take precedence
-		if err := cfg.MergeWith(
-			filteredCurrCfg,
-			versionSpecificCfg,
-			kibanaTLSCfg,
-			userSettings); err != nil {
-			return CanonicalConfig{}, err
-		}
-		return CanonicalConfig{cfg}, nil
-	}
-
-	username, password, err := association.ElasticsearchAuthSettings(client, &kb)
-	if err != nil {
-		return CanonicalConfig{}, err
-	}
-
-	// merge the configuration with userSettings last so they take precedence
-	err = cfg.MergeWith(
-		filteredCurrCfg,
-		versionSpecificCfg,
-		kibanaTLSCfg,
-		settings.MustCanonicalConfig(elasticsearchTLSSettings(kb)),
-		settings.MustCanonicalConfig(
-			map[string]interface{}{
-				ElasticsearchUsername: username,
-				ElasticsearchPassword: password,
-			},
-		),
-		userSettings,
-	)
-	if err != nil {
-		return CanonicalConfig{}, err
-	}
-
-	return CanonicalConfig{cfg}, nil
 }
