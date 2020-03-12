@@ -5,8 +5,8 @@
 package sidecar
 
 import (
-	"file/filepath"
 	"fmt"
+	"path/filepath"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
@@ -36,10 +36,12 @@ const (
 	// currently ES settings are in apis/elasticsearch/v1/fields.go, maybe we should move there?
 )
 
+// NewMonitoringSidecars returns the monitoring sidecar containers if any
 func NewMonitoringSidecars(es esv1.Elasticsearch) []corev1.Container {
 	var sidecars []corev1.Container
 	if len(es.Spec.Monitoring.ElasticsearchRefs) == 0 {
-		return sidecars
+		// TODO refresh my memory on nil slices, i thought this would be an array by default
+		return []corev1.Container{}
 	}
 	// TODO currently this only builds one sidecar, but it will in the future build one per ElasticsearchRef
 	sidecar := corev1.Container{
@@ -55,20 +57,7 @@ func NewMonitoringSidecars(es esv1.Elasticsearch) []corev1.Container {
 		Env: getEnv(es),
 
 		// TODO the volumes are on the pod not the container, so if we want to add it we will also need to modify the WithX func to include it
-		VolumeMounts: []corev1.VolumeMount{corev1.VolumeMount{
-			// TODO use the namer?
-			Name:      fmt.Sprintf("%s-monitoring-config", es.Name),
-			ReadOnly:  true,
-			MountPath: SettingsPath,
-		},
-			{
-				Name:      es.AssociationConf().GetAuthSecretName(),
-				ReadOnly:  true,
-				MountPath: SettingsPath,
-				// TODO verify this exists
-				SubPath: "ca.crt",
-			},
-		},
+		VolumeMounts: newSidecarVolumeMounts(es),
 	}
 	sidecars = append(sidecars, sidecar)
 	return sidecars
@@ -106,6 +95,7 @@ func getEnv(es esv1.Elasticsearch) []corev1.EnvVar {
 }
 
 // NewSidecarVolumes returns the volumes required to run the sidecars
+// any changes here should also be reflected in newSidecarVolumeMounts
 func NewSidecarVolumes(es esv1.Elasticsearch) []corev1.Volume {
 	// TODO is there a nicer guard for this?
 	if len(es.Spec.Monitoring.ElasticsearchRefs) == 0 {
@@ -121,6 +111,25 @@ func NewSidecarVolumes(es esv1.Elasticsearch) []corev1.Volume {
 						Name: fmt.Sprintf("%s-monitoring-config", es.Name),
 					},
 				}}},
+	}
+}
+
+// any changes here should also be reflected in NewSidecarVolumes
+// TODO consider making this the same func returning both the mounts and the volumes? probably
+func newSidecarVolumeMounts(es esv1.Elasticsearch) []corev1.VolumeMount {
+	return []corev1.VolumeMount{corev1.VolumeMount{
+		// TODO use the namer?
+		Name:      fmt.Sprintf("%s-monitoring-config", es.Name),
+		ReadOnly:  true,
+		MountPath: SettingsPath,
+	},
+		{
+			Name:      es.AssociationConf().GetAuthSecretName(),
+			ReadOnly:  true,
+			MountPath: SettingsPath,
+			// TODO verify this exists in the secret
+			SubPath: "ca.crt",
+		},
 	}
 }
 
