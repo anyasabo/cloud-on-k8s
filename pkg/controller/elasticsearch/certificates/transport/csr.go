@@ -16,6 +16,7 @@ import (
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
 	netutil "github.com/elastic/cloud-on-k8s/pkg/utils/net"
 )
 
@@ -66,6 +67,7 @@ func buildGeneralNames(
 	cluster esv1.Elasticsearch,
 	pod corev1.Pod,
 ) ([]certificates.GeneralName, error) {
+	// TODO remove the IP address
 	podIP := net.ParseIP(pod.Status.PodIP)
 	if podIP == nil {
 		return nil, errors.Errorf("pod currently has no valid IP, found: [%s]", pod.Status.PodIP)
@@ -90,6 +92,9 @@ func buildGeneralNames(
 		// add the transport service name for remote cluster connections initially connecting through the service
 		// the DNS name has to match the seed hosts configured in the remote cluster settings
 		{DNSName: fmt.Sprintf("%s.%s.svc", esv1.TransportService(cluster.Name), cluster.Namespace)},
+		// it is also possible to connect to it internally without the namespace, which is how the nodes communicate
+		// TODO this also needs the headless service name, which is based on the sset. we should make this not hacky af
+		{DNSName: fmt.Sprintf("%s.%s", pod.Name, nodespec.HeadlessServiceName(pod.OwnerReferences[0].Name))},
 		{IPAddress: netutil.MaybeIPTo4(podIP)},
 		{IPAddress: net.ParseIP("127.0.0.1").To4()},
 	}
@@ -99,5 +104,6 @@ func buildGeneralNames(
 
 // buildCertificateCommonName returns the CN (and ES othername) entry for a given pod within a stack
 func buildCertificateCommonName(pod corev1.Pod, clusterName, namespace string) string {
+	// TODO why does this include "node" and "es.local" rather than "cluster.local"?
 	return fmt.Sprintf("%s.node.%s.%s.es.local", pod.Name, clusterName, namespace)
 }

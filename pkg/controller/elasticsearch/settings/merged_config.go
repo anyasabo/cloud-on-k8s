@@ -5,6 +5,7 @@
 package settings
 
 import (
+	"fmt"
 	"path"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
@@ -47,11 +48,13 @@ func baseConfig(clusterName string, ver version.Version) *CanonicalConfig {
 		esv1.ClusterName: clusterName,
 
 		// derive IP dynamically from the pod IP, injected as env var
-		esv1.NetworkPublishHost: "${" + EnvPodIP + "}",
-		esv1.NetworkHost:        "0.0.0.0",
-
-		esv1.PathData: volume.ElasticsearchDataMountPath,
-		esv1.PathLogs: volume.ElasticsearchLogsMountPath,
+		// esv1.NetworkPublishHost: "${" + EnvPodIP + "}",
+		// esv1.NetworkHost: "0.0.0.0",
+		// this seems to fail because the headless service doesnt publish not ready addresses, so it cant resolve itself. need to investigate workarounds
+		// "stacktrace": ["org.elasticsearch.bootstrap.StartupException: BindTransportException[Failed to resolve host [elasticsearch-sample-es-default-2.elasticsearch-sample-es-default]]; nested: UnknownHostException[elasticsearch-sample-es-default-2.elasticsearch-sample-es-default: Name or service not known];",
+		esv1.NetworkHost: fmt.Sprintf("${%s}.${%s}", EnvPodName, HeadlessServiceName),
+		esv1.PathData:    volume.ElasticsearchDataMountPath,
+		esv1.PathLogs:    volume.ElasticsearchLogsMountPath,
 	}
 
 	// seed hosts setting name changed starting ES 7.X
