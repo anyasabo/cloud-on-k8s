@@ -50,9 +50,11 @@ func baseConfig(clusterName string, ver version.Version) *CanonicalConfig {
 		// derive IP dynamically from the pod IP, injected as env var
 		// esv1.NetworkPublishHost: "${" + EnvPodIP + "}",
 		// esv1.NetworkHost: "0.0.0.0",
-		// this seems to fail because the headless service doesnt publish not ready addresses, so it cant resolve itself. need to investigate workarounds
-		// "stacktrace": ["org.elasticsearch.bootstrap.StartupException: BindTransportException[Failed to resolve host [elasticsearch-sample-es-default-2.elasticsearch-sample-es-default]]; nested: UnknownHostException[elasticsearch-sample-es-default-2.elasticsearch-sample-es-default: Name or service not known];",
-		esv1.NetworkHost:        "0.0.0.0",
+		esv1.NetworkHost: "0.0.0.0",
+		// TODO make sure this is actually what forces it to use it for transport
+		// this also generates a ton of these deprecation warnings, even though we do not set the mentioned jvm option
+		// {"type": "deprecation", "timestamp": "2020-04-07T20:31:08,555Z", "level": "WARN", "component": "o.e.d.t.TransportInfo", "cluster.name": "elasticsearch-sample", "node.name": "elasticsearch-sample-es-default-2", "message": "transport.publish_address was printed as [ip:port] instead of [hostname/ip:port]. This format is deprecated and will change to [hostname/ip:port] in a future version. Use -Des.transport.cname_in_publish_address=true to enforce non-deprecated formatting.", "cluster.uuid": "gN0gQdteSzKYoEICZa4ASA", "node.id": "40o6w2xgSu-neHyJ_Om9aQ"  }
+		// this says it was fixed https://github.com/elastic/elasticsearch/issues/47436, but i can repro on 7.6.2
 		esv1.NetworkPublishHost: fmt.Sprintf("${%s}.${%s}", EnvPodName, HeadlessServiceName),
 		esv1.PathLogs:           volume.ElasticsearchLogsMountPath,
 	}

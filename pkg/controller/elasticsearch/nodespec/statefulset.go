@@ -42,9 +42,12 @@ func HeadlessService(es types.NamespacedName, ssetName string) corev1.Service {
 			Labels:    label.NewStatefulSetLabels(es, ssetName),
 		},
 		Spec: corev1.ServiceSpec{
-			Type:                     corev1.ServiceTypeClusterIP,
-			ClusterIP:                corev1.ClusterIPNone,
-			Selector:                 label.NewStatefulSetLabels(es, ssetName),
+			Type:      corev1.ServiceTypeClusterIP,
+			ClusterIP: corev1.ClusterIPNone,
+			Selector:  label.NewStatefulSetLabels(es, ssetName),
+			// this is needed because ES will try and resolve its publish address on startup,
+			// but the pod is not ready at that point so it is not part of the service and thus its publish address is unresolvable
+			// e.g. BindTransportException[Failed to resolve publish address]; nested: UnknownHostException[elasticsearch-sample-es-default-2.elasticsearch-sample-es-default: Name or service not known];
 			PublishNotReadyAddresses: true,
 		},
 	}
