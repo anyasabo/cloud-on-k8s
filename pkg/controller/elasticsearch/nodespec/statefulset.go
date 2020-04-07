@@ -42,9 +42,10 @@ func HeadlessService(es types.NamespacedName, ssetName string) corev1.Service {
 			Labels:    label.NewStatefulSetLabels(es, ssetName),
 		},
 		Spec: corev1.ServiceSpec{
-			Type:      corev1.ServiceTypeClusterIP,
-			ClusterIP: corev1.ClusterIPNone,
-			Selector:  label.NewStatefulSetLabels(es, ssetName),
+			Type:                     corev1.ServiceTypeClusterIP,
+			ClusterIP:                corev1.ClusterIPNone,
+			Selector:                 label.NewStatefulSetLabels(es, ssetName),
+			PublishNotReadyAddresses: true,
 		},
 	}
 }
