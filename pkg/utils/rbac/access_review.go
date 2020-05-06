@@ -5,6 +5,7 @@
 package rbac
 
 import (
+	"context"
 	"strings"
 
 	"github.com/gobuffalo/flect"
@@ -70,7 +71,7 @@ func (s *SubjectAccessReviewer) AccessAllowed(serviceAccount string, sourceNames
 
 	sar := newSubjectAccessReview(metaObject, object, serviceAccount, sourceNamespace)
 
-	sar, err = s.client.AuthorizationV1().SubjectAccessReviews().Create(sar)
+	sar, err = s.client.AuthorizationV1().SubjectAccessReviews().Create(context.TODO(), sar, metav1.CreateOptions{})
 	if err != nil {
 		return false, err
 	}

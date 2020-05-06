@@ -135,7 +135,7 @@ func parsePodAddr(addr string, clientSet *kubernetes.Clientset) (*types.Namespac
 func getPodWithIP(ip string, clientSet *kubernetes.Clientset) (*types.NamespacedName, error) {
 	pods, err := clientSet.CoreV1().
 		Pods("").
-		List(metav1.ListOptions{
+		List(context.TODO(), metav1.ListOptions{
 			FieldSelector: fmt.Sprintf("status.podIP=%s", ip),
 		})
 	if err != nil {
@@ -207,7 +207,7 @@ func (f *PodForwarder) Run(ctx context.Context) error {
 
 	if f.clientset != nil {
 		log.V(1).Info("Watching pod for changes", "namespace", f.podNSN.Namespace, "pod_name", f.podNSN.Name)
-		w, err := f.clientset.CoreV1().Pods(f.podNSN.Namespace).Watch(metav1.ListOptions{
+		w, err := f.clientset.CoreV1().Pods(f.podNSN.Namespace).Watch(context.TODO(), metav1.ListOptions{
 			FieldSelector: fields.OneTermEqualSelector("metadata.name", f.podNSN.Name).String(),
 		})
 		if err != nil {

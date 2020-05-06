@@ -5,6 +5,7 @@
 package about
 
 import (
+	"context"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -80,7 +81,7 @@ func getOperatorUUID(clientset kubernetes.Interface, operatorNs string) (types.U
 	c := clientset.CoreV1().ConfigMaps(operatorNs)
 
 	// get the config map
-	reconciledCfgMap, err := c.Get(UUIDCfgMapName, metav1.GetOptions{})
+	reconciledCfgMap, err := c.Get(context.TODO(), UUIDCfgMapName, metav1.GetOptions{})
 	if err != nil && !apierrors.IsNotFound(err) {
 		return types.UID(""), err
 	}
@@ -97,7 +98,7 @@ func getOperatorUUID(clientset kubernetes.Interface, operatorNs string) (types.U
 				UUIDCfgMapKey: string(newUUID),
 			},
 		}
-		_, err = c.Create(&cfgMap)
+		_, err = c.Create(context.TODO(), &cfgMap, metav1.CreateOptions{})
 		if err != nil {
 			return types.UID(""), err
 		}
@@ -113,7 +114,7 @@ func getOperatorUUID(clientset kubernetes.Interface, operatorNs string) (types.U
 			reconciledCfgMap.Data = map[string]string{}
 		}
 		reconciledCfgMap.Data[UUIDCfgMapKey] = string(newUUID)
-		_, err := c.Update(reconciledCfgMap)
+		_, err := c.Update(context.TODO(), reconciledCfgMap, metav1.UpdateOptions{})
 		if err != nil && !apierrors.IsNotFound(err) {
 			return types.UID(""), err
 		}

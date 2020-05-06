@@ -5,6 +5,7 @@
 package webhook
 
 import (
+	"context"
 	"time"
 
 	pkgerrors "github.com/pkg/errors"
@@ -60,7 +61,7 @@ func (r *ReconcileWebhookResources) reconcileInternal() *reconciler.Results {
 	}
 
 	// Get the latest content of the webhook CA
-	webhookServerSecret, err := r.clientset.CoreV1().Secrets(r.webhookParams.Namespace).Get(r.webhookParams.SecretName, metav1.GetOptions{})
+	webhookServerSecret, err := r.clientset.CoreV1().Secrets(r.webhookParams.Namespace).Get(context.TODO(), r.webhookParams.SecretName, metav1.GetOptions{})
 	if err != nil {
 		return res.WithError(err)
 	}

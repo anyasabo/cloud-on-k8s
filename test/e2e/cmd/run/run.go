@@ -408,7 +408,7 @@ func (h *helper) streamTestJobOutput(streamStatus chan<- error, client *kubernet
 	}
 
 	req := client.CoreV1().Pods(h.testContext.E2ENamespace).GetLogs(pod, opts).Context(context.Background())
-	stream, err := req.Stream()
+	stream, err := req.Stream(context.TODO())
 	if err != nil {
 		streamStatus <- err
 		return
