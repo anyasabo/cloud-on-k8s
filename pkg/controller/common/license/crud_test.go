@@ -15,6 +15,22 @@ import (
 )
 
 func TestUpdateEnterpriseLicense(t *testing.T) {
+	secretName := "my-secret"
+	ns := "my-ns"
+	nsn := types.NamespacedName{
+		Name:      secretName,
+		Namespace: ns,
+	}
+	secret := v1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      secretName,
+			Namespace: ns,
+			Labels: map[string]string{
+				"my-label": "value",
+			},
+		},
+	}
+
 	type args struct {
 		c      k8s.Client
 		secret v1.Secret
@@ -29,36 +45,30 @@ func TestUpdateEnterpriseLicense(t *testing.T) {
 		{
 			name: "updates labels preserving existing ones",
 			args: args{
-				c: k8s.WrappedFakeClient(&v1.Secret{}),
-				secret: v1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Labels: map[string]string{
-							"my-label": "value",
-						},
-					},
-				},
-				l: licenseFixtureV3,
+				c:      k8s.WrappedFakeClient(&secret),
+				secret: secret,
+				l:      licenseFixtureV3,
 			},
 			wantErr: false,
 			assertion: func(client k8s.Client) {
 				var sec v1.Secret
-				err := client.Get(types.NamespacedName{}, &sec)
+				err := client.Get(nsn, &sec)
 				require.NoError(t, err)
-				require.Equal(t, sec.Labels["my-label"], "value")
+				require.Equal(t, sec.Labels["my-label"], "value", "obj", sec)
 				require.Contains(t, sec.Labels, LicenseLabelScope)
 			},
 		},
 		{
 			name: "basic update",
 			args: args{
-				c:      k8s.WrappedFakeClient(&v1.Secret{}),
-				secret: v1.Secret{},
+				c:      k8s.WrappedFakeClient(&secret),
+				secret: secret,
 				l:      licenseFixtureV3,
 			},
 			wantErr: false,
 			assertion: func(client k8s.Client) {
 				var sec v1.Secret
-				err := client.Get(types.NamespacedName{}, &sec)
+				err := client.Get(nsn, &sec)
 				require.NoError(t, err)
 				require.Equal(t, string(licenseFixtureV3.License.Type), sec.Labels[LicenseLabelType])
 				require.Equal(t, string(LicenseScopeOperator), sec.Labels[LicenseLabelScope])
