@@ -175,11 +175,21 @@ func Test_Get(t *testing.T) {
 func Test_Start(t *testing.T) {
 	es := esv1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "es-test",
+			Name:      "es-test",
+			Namespace: operatorNs,
 		},
 		Spec: esv1.ElasticsearchSpec{NodeSets: []esv1.NodeSet{{Count: 40}}}}
-	kb := kbv1.Kibana{Spec: kbv1.KibanaSpec{Count: 2}}
-	apm := apmv1.ApmServer{Spec: apmv1.ApmServerSpec{Count: 2}}
+	kb := kbv1.Kibana{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "kb-test",
+			Namespace: operatorNs,
+		},
+		Spec: kbv1.KibanaSpec{Count: 2}}
+	apm := apmv1.ApmServer{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "apm-test",
+			Namespace: operatorNs,
+		}, Spec: apmv1.ApmServerSpec{Count: 2}}
 	k8sClient := k8s.FakeClient(&es, &kb, &apm)
 	refreshPeriod := 1 * time.Second
 	waitFor := 10 * refreshPeriod
@@ -207,10 +217,10 @@ func Test_Start(t *testing.T) {
 	// increase the Elasticsearch nodes count
 	es.Spec.NodeSets[0].Count = 80
 	err := k8sClient.Update(context.Background(), &es)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// check that the licensing config map has been updated
-	assert.Eventually(t, func() bool {
+	require.Eventually(t, func() bool {
 		var cm corev1.ConfigMap
 		err := k8sClient.Get(context.Background(), types.NamespacedName{
 			Namespace: operatorNs,
@@ -219,6 +229,7 @@ func Test_Start(t *testing.T) {
 		if err != nil {
 			return false
 		}
+		t.Logf("expecting basic. ts: %v, license level: %v, erus: %v, memory: %v", cm.Data["timestamp"], cm.Data["eck_license_level"], cm.Data["enterprise_resource_units"], cm.Data["total_managed_memory"])
 		return cm.Data["timestamp"] != "" &&
 			cm.Data["eck_license_level"] == defaultOperatorLicenseLevel &&
 			cm.Data["enterprise_resource_units"] == "3" &&
@@ -236,6 +247,7 @@ func Test_Start(t *testing.T) {
 		if err != nil {
 			return false
 		}
+		t.Logf("expecting enterprise trial. ts: %v, license level: %v, erus: %v, memory: %v", cm.Data["timestamp"], cm.Data["eck_license_level"], cm.Data["enterprise_resource_units"], cm.Data["total_managed_memory"])
 		return cm.Data["timestamp"] != "" &&
 			cm.Data["eck_license_level"] == string(commonlicense.LicenseTypeEnterpriseTrial) &&
 			cm.Data["enterprise_resource_units"] == "3" &&
