@@ -8,7 +8,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -90,7 +89,7 @@ func (w *clientWrapper) callWithContext(f func(ctx context.Context) error) error
 		ctx, cancel = context.WithTimeout(context.Background(), w.timeout)
 		defer cancel()
 	}
-	return errors.WithStack(f(ctx))
+	return f(ctx)
 }
 
 // Get wraps a controller-runtime client.Get call with a context.

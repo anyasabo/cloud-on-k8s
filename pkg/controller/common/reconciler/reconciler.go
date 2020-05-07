@@ -122,7 +122,7 @@ func ReconcileResource(params Params) error {
 		return create()
 	} else if err != nil {
 		log.Error(err, fmt.Sprintf("Generic GET for %s %s/%s failed with error", kind, namespace, name))
-		return errors.Errorf("failed to get %s %s/%s: %w", kind, namespace, name, err)
+		return errors.Errorf("failed to get %s %s/%s: %v", kind, namespace, name, err)
 	}
 
 	if params.NeedsRecreate != nil && params.NeedsRecreate() {
@@ -143,7 +143,7 @@ func ReconcileResource(params Params) error {
 
 		err = params.Client.Delete(params.Expected, opt)
 		if err != nil && !apierrors.IsNotFound(err) {
-			return errors.Errorf("failed to delete %s %s/%s: %w", kind, namespace, name, err)
+			return errors.Errorf("failed to delete %s %s/%s: %v", kind, namespace, name, err)
 		}
 		return create()
 	}

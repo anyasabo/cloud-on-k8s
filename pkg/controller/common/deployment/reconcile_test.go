@@ -82,6 +82,9 @@ func TestReconcile(t *testing.T) {
 	require.NoError(t, err)
 	comparison.RequireEqual(t, &reconciled, &reconciledAgain)
 
+	// update object to get current resource version
+	expected = retrieved
+
 	// update with a new spec
 	expected.Spec.Replicas = pointer.Int32(3)
 	reconciled, err = Reconcile(k8sClient, expected, &owner)
