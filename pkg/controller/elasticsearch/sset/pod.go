@@ -18,6 +18,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
+	"github.com/pkg/errors"
 )
 
 // PodName returns the name of the pod with the given ordinal for this StatefulSet.
@@ -48,7 +49,7 @@ func GetActualPodsForStatefulSet(c k8s.Client, sset types.NamespacedName) ([]cor
 		label.StatefulSetNameLabelName: sset.Name,
 	})
 	if err := c.List(&pods, matchLabels, ns); err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 	return pods.Items, nil
 }
@@ -62,7 +63,7 @@ func GetActualPodsForCluster(c k8s.Client, es esv1.Elasticsearch) ([]corev1.Pod,
 		label.ClusterNameLabelName: es.Name,
 	})
 	if err := c.List(&pods, ns, matchLabels); err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 	return pods.Items, nil
 }
@@ -77,7 +78,7 @@ func GetActualMastersForCluster(c k8s.Client, es esv1.Elasticsearch) ([]corev1.P
 		string(label.NodeTypesMasterLabelName): "true",
 	})
 	if err := c.List(&pods, ns, matchLabels); err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 	return pods.Items, nil
 }

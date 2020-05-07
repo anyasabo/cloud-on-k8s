@@ -130,9 +130,20 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 	require.NoError(t, k8sClient.Get(types.NamespacedName{Namespace: "ns", Name: esv1.ConfigSecret("sset1")}, &corev1.Secret{}))
 	require.NoError(t, k8sClient.Get(types.NamespacedName{Namespace: "ns", Name: esv1.ConfigSecret("sset2")}, &corev1.Secret{}))
 
-	// upscale data nodes
+	// refresh resources for next step
+	require.NoError(t, ctx.k8sClient.Get(types.NamespacedName{Name: es.Name, Namespace: es.Namespace}, &es))
+	ctx.es = es
+
+	require.NoError(t, ctx.k8sClient.Get(types.NamespacedName{Name: sset1.Name, Namespace: sset1.Namespace}, &sset1))
+	require.NoError(t, ctx.k8sClient.Get(types.NamespacedName{Name: sset2.Name, Namespace: sset2.Namespace}, &sset2))
+
 	actualStatefulSets = sset.StatefulSetList{sset1, sset2}
+	expectedResources[0].StatefulSet = sset1
+	expectedResources[1].StatefulSet = sset2
+
+	// upscale data nodes
 	expectedResources[1].StatefulSet.Spec.Replicas = pointer.Int32(10)
+
 	updatedStatefulSets, err = HandleUpscaleAndSpecChanges(ctx, actualStatefulSets, expectedResources)
 	require.NoError(t, err)
 	require.NoError(t, k8sClient.Get(types.NamespacedName{Namespace: "ns", Name: "sset2"}, &sset2))
@@ -141,14 +152,36 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 	// expectations should have been set
 	require.NotEmpty(t, ctx.expectations.GetGenerations())
 
-	// apply a spec change
+	// refresh resources for next step
+	require.NoError(t, ctx.k8sClient.Get(types.NamespacedName{Name: es.Name, Namespace: es.Namespace}, &es))
+	ctx.es = es
+
+	require.NoError(t, ctx.k8sClient.Get(types.NamespacedName{Name: sset1.Name, Namespace: sset1.Namespace}, &sset1))
+	require.NoError(t, ctx.k8sClient.Get(types.NamespacedName{Name: sset2.Name, Namespace: sset2.Namespace}, &sset2))
+
 	actualStatefulSets = sset.StatefulSetList{sset1, sset2}
+	expectedResources[0].StatefulSet = sset1
+	expectedResources[1].StatefulSet = sset2
+
+	// apply a spec change
 	expectedResources[1].StatefulSet.Spec.Template.Labels = map[string]string{"a": "b"}
+	expectedResources[1].StatefulSet.Labels = hash.SetTemplateHashLabel(expectedResources[1].StatefulSet.Labels, expectedResources[1].StatefulSet.Spec)
 	updatedStatefulSets, err = HandleUpscaleAndSpecChanges(ctx, actualStatefulSets, expectedResources)
 	require.NoError(t, err)
 	require.NoError(t, k8sClient.Get(types.NamespacedName{Namespace: "ns", Name: "sset2"}, &sset2))
-	require.Equal(t, "b", sset2.Spec.Template.Labels["a"])
+	require.Equal(t, "b", sset2.Spec.Template.Labels["a"], "labels", sset2.Spec.Template)
 	comparison.RequireEqual(t, &updatedStatefulSets[1], &sset2)
+
+	// refresh resources for next step
+	require.NoError(t, ctx.k8sClient.Get(types.NamespacedName{Name: es.Name, Namespace: es.Namespace}, &es))
+	ctx.es = es
+
+	require.NoError(t, ctx.k8sClient.Get(types.NamespacedName{Name: sset1.Name, Namespace: sset1.Namespace}, &sset1))
+	require.NoError(t, ctx.k8sClient.Get(types.NamespacedName{Name: sset2.Name, Namespace: sset2.Namespace}, &sset2))
+
+	actualStatefulSets = sset.StatefulSetList{sset1, sset2}
+	expectedResources[0].StatefulSet = sset1
+	expectedResources[1].StatefulSet = sset2
 
 	// apply a spec change and a downscale from 10 to 2
 	actualStatefulSets = sset.StatefulSetList{sset1, sset2}

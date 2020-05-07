@@ -77,19 +77,19 @@ func ReconcileResource(params Params) error {
 	}
 	metaObj, err := meta.Accessor(params.Expected)
 	if err != nil {
-		return err
+		return errors.WithStack(err)
 	}
 	namespace := metaObj.GetNamespace()
 	name := metaObj.GetName()
 	gvk, err := apiutil.GVKForObject(params.Expected, scheme.Scheme)
 	if err != nil {
-		return err
+		return errors.WithStack(err)
 	}
 	kind := gvk.Kind
 
 	if params.Owner != nil {
 		if err := controllerutil.SetControllerReference(params.Owner, metaObj, scheme.Scheme); err != nil {
-			return err
+			return errors.WithStack(err)
 		}
 	}
 
@@ -122,7 +122,7 @@ func ReconcileResource(params Params) error {
 		return create()
 	} else if err != nil {
 		log.Error(err, fmt.Sprintf("Generic GET for %s %s/%s failed with error", kind, namespace, name))
-		return fmt.Errorf("failed to get %s %s/%s: %w", kind, namespace, name, err)
+		return errors.Errorf("failed to get %s %s/%s: %w", kind, namespace, name, err)
 	}
 
 	if params.NeedsRecreate != nil && params.NeedsRecreate() {
@@ -130,7 +130,7 @@ func ReconcileResource(params Params) error {
 		log.Info("Deleting resource", "kind", kind, "namespace", namespace, "name", name)
 		reconciledMeta, err := meta.Accessor(params.Reconciled)
 		if err != nil {
-			return err
+			return errors.WithStack(err)
 		}
 		// Using a precondition here to make sure we delete the version of the resource we intend to delete and
 		// to avoid accidentally deleting a resource already recreated for example
@@ -143,7 +143,7 @@ func ReconcileResource(params Params) error {
 
 		err = params.Client.Delete(params.Expected, opt)
 		if err != nil && !apierrors.IsNotFound(err) {
-			return fmt.Errorf("failed to delete %s %s/%s: %w", kind, namespace, name, err)
+			return errors.Errorf("failed to delete %s %s/%s: %w", kind, namespace, name, err)
 		}
 		return create()
 	}
