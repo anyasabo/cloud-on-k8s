@@ -182,6 +182,8 @@ func TestReconcileEnterpriseSearch_Reconcile_Create_Update_Resources(t *testing.
 			Version: "7.7.0",
 			Count:   3,
 		}}
+	sampleNsn := types.NamespacedName{Name: sample.Name, Namespace: sample.Namespace}
+
 	r := &ReconcileEnterpriseSearch{
 		Client:         k8s.WrappedFakeClient(&sample),
 		dynamicWatches: watches.NewDynamicWatches(),
@@ -228,7 +230,7 @@ func TestReconcileEnterpriseSearch_Reconcile_Create_Update_Resources(t *testing.
 	}
 
 	// first call
-	res, err := r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Name: "sample", Namespace: "ns"}})
+	res, err := r.Reconcile(reconcile.Request{NamespacedName: sampleNsn})
 	require.NoError(t, err)
 	// should requeue for cert expiration
 	require.NotZero(t, res.RequeueAfter)
@@ -236,7 +238,7 @@ func TestReconcileEnterpriseSearch_Reconcile_Create_Update_Resources(t *testing.
 	checkResources()
 
 	// call-again: no-op
-	res, err = r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Name: "sample", Namespace: "ns"}})
+	res, err = r.Reconcile(reconcile.Request{NamespacedName: sampleNsn})
 	require.NoError(t, err)
 	require.NotZero(t, res.RequeueAfter)
 	// all resources should be the same
@@ -272,7 +274,7 @@ func TestReconcileEnterpriseSearch_Reconcile_Create_Update_Resources(t *testing.
 	require.NoError(t, err)
 
 	// call again: all resources should be updated to revert our manual changes above
-	res, err = r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Name: "sample", Namespace: "ns"}})
+	res, err = r.Reconcile(reconcile.Request{NamespacedName: sampleNsn})
 	require.NoError(t, err)
 	require.NotZero(t, res.RequeueAfter)
 	// all resources should be the same
